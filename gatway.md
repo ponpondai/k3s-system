@@ -11,13 +11,15 @@ ds01 alpine 3.13.1
 
 # GateWay事前準備 
 - 取消 sudo 輸入密碼步驟
-$ sudo nano  /etc/sudoers
+>$ sudo nano  /etc/sudoers
                    :::
 %sudo   ALL=(ALL:ALL)  NOPASSWD:ALL
 - 安裝wifi套件
-$ sudo apt update -y
-$ sudo apt install wpasupplicant
-$ sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
+>$ sudo apt update -y
+
+>$ sudo apt install wpasupplicant
+
+>$ sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
 ```
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 
@@ -39,9 +41,11 @@ network={
 
 
 
-$ sudo kill -9 $(ps -ef | grep wpa | awk '{print $2}’)
+>$ sudo kill -9 $(ps -ef | grep wpa | awk '{print $2}')
 
-$ sudo wpa_supplicant -B -i XXXwifi網卡名稱 -D wext -c /etc/wpa_supplicant/wpa_supplicant.conf
+>$ sudo wpa_supplicant -B -i XXXwifi網卡名稱 -D wext -c /etc/wpa_supplicant/wpa_supplicant.conf
+
+>$ sudo dhclient
 
 # 開機自動連線wpa_supplicant.service
 $ sudo nano /etc/systemd/system/wpa_supplicant.service
@@ -65,8 +69,12 @@ Alias=dbus-fi.w1.wpa_supplicant1.service
 ```
 # 開機自動連線dhclient.service
  
-$ sudo nano /etc/systemd/system/dhclient.service
-!!重要$ sudo systemctl enable dhclient.service
+>$ sudo nano /etc/systemd/system/dhclient.service
+
+!!重要
+>$ sudo systemctl enable dhclient.service
+
+>$ sudo reboot
 
 ```
 [Unit]
@@ -82,12 +90,30 @@ ExecStart=/sbin/dhclient XXXXXwifi網卡名稱
 WantedBy=multi-user.target
 
 ```
+
 # 開機執行iptable 跟ip_forward
 
-$ echo "sudo iptables -t nat -A POSTROUTING -s 172.17.40.0/24 -o 對外網卡名稱 -j MASQUERADE"
+$ echo "sudo iptables -t nat -A POSTROUTING -s 192.168.30.0/24 -o 對外網卡名稱 -j MASQUERADE" >>.bashrc
 
-$ echo 1 |sudo tee /proc/sys/net/ipv4/ip_forward
+$ echo 'echo 1 |sudo tee /proc/sys/net/ipv4/ip_forward'>>.bashrc
 
+# 設定default gateway
+>$ sudo nano /etc/netplan/XX-network-manager-all.yaml
+```
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp1s0:
+      dhcp4: no
+      dhcp6: no
+      addresses: [172.17.40.1/26]
+      gateway4: 192.192.156.62
+      nameservers:
+        addresses: [8.8.8.8,8.8.4.4]
+
+
+```
 # 設定 SSH 遠端管理系統
 $ sudo nano /etc/ssh/ssh_config
                             :::
@@ -102,15 +128,27 @@ PermitRootLogin no
 [重要] PermitRootLogin without-password 修改為 no
 
 # 安裝Dnsmasq on Ubuntu 18.04
-$ sudo systemctl disable systemd-resolved
+>$ sudo systemctl disable systemd-resolved
 
-$ sudo systemctl stop systemd-resolved
-$ sudo rm /etc/resolv.conf
-$ sudo nano /etc/resolv.conf
+>$ sudo systemctl stop systemd-resolved
+
+>$ sudo rm /etc/resolv.conf
+
+>$ sudo nano /etc/resolv.conf
 ```
 nameserver 127.0.0.1
 nameserver 8.8.8.8
 ```
+>$ sudo apt-get install dnsmasq
+
+>$ sudo nano /etc/dnsmasq.conf
+```
+If you want to enable DNSSEC validation and caching, uncomment
+
+#dnssec
+Make any other changes you see relevant and restart dnsmasq when done:
+```
+
 # 設定Dnsmasq DHCP server(並將其設定為固定ip來使用k3s)
 $ sudo nano /etc/dnsmasq.conf
 ```
